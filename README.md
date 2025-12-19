@@ -248,7 +248,6 @@ MEGALLM_API_KEY=your-megallm-api-key
 MEGALLM_API_URL=https://api.megallm.com/v1
 NODE_ENV=production
 FRONTEND_URL=https://your-domain.com,http://your-vps-ip:5173
-ADMIN_SECRET=your-admin-secret-change-this
 TEBEX_WEBHOOK_SECRET=your-tebex-webhook-secret
 ```
 

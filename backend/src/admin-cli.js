@@ -17,7 +17,7 @@
  * 
  * Examples:
  *   node src/admin-cli.js add-tokens --user john@example.com --amount 1000
- *   node src/admin-cli.js set-tokens --username john --amount 5000
+ *   node src/admin-cli.js set-tokens --user john --amount 5000
  *   node src/admin-cli.js list-users
  *   node src/admin-cli.js user-info --user 1
  */
@@ -25,74 +25,17 @@
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import Database from 'better-sqlite3';
-import fs from 'fs';
 
 // Load environment
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 dotenv.config({ path: join(__dirname, '../.env') });
 
-// Ensure data directory exists
-const dataDir = join(__dirname, '../data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
+// Import database and initialization from shared module
+import db, { initDatabase } from './config/database.js';
 
-// Initialize database
-const db = new Database(join(__dirname, '../data/kodella.db'));
-
-// Enable foreign keys
-db.pragma('foreign_keys = ON');
-
-// Initialize database schema if needed
-function initDatabaseSchema() {
-  // Users table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
-      username TEXT UNIQUE NOT NULL,
-      tokens INTEGER DEFAULT 1000,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  // Token transactions table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS token_transactions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      plugin_id INTEGER,
-      amount INTEGER NOT NULL,
-      type TEXT NOT NULL,
-      description TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )
-  `);
-
-  // Plugins table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS plugins (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      name TEXT NOT NULL,
-      description TEXT,
-      code TEXT NOT NULL,
-      prompt TEXT NOT NULL,
-      status TEXT DEFAULT 'draft',
-      tokens_used INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )
-  `);
-}
-
-initDatabaseSchema();
+// Initialize database schema
+initDatabase();
 
 // Colors for terminal output
 const colors = {
@@ -163,7 +106,11 @@ function addTokens(userId, amount, description) {
 }
 
 function setTokens(userId, amount, description) {
-  const currentTokens = db.prepare('SELECT tokens FROM users WHERE id = ?').get(userId).tokens;
+  const userResult = db.prepare('SELECT tokens FROM users WHERE id = ?').get(userId);
+  if (!userResult) {
+    throw new Error('User not found');
+  }
+  const currentTokens = userResult.tokens;
   db.prepare('UPDATE users SET tokens = ? WHERE id = ?').run(amount, userId);
   
   const diff = amount - currentTokens;

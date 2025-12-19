@@ -7,24 +7,12 @@ import authRoutes from './routes/auth.js';
 import pluginRoutes from './routes/plugins.js';
 import profileRoutes from './routes/profile.js';
 import paymentRoutes from './routes/payment.js';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import fs from 'fs';
 
 dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 const HOST = process.env.HOST || '0.0.0.0'; // Bind to all interfaces for VPS
-
-// Ensure data directory exists
-const dataDir = join(__dirname, '../data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
 
 // Initialize database
 initDatabase();
