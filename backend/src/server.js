@@ -7,30 +7,39 @@ import authRoutes from './routes/auth.js';
 import pluginRoutes from './routes/plugins.js';
 import profileRoutes from './routes/profile.js';
 import paymentRoutes from './routes/payment.js';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import fs from 'fs';
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
 const app = express();
 const PORT = process.env.PORT || 3001;
-
-// Ensure data directory exists
-const dataDir = join(__dirname, '../data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
+const HOST = process.env.HOST || '0.0.0.0'; // Bind to all interfaces for VPS
 
 // Initialize database
 initDatabase();
 
+// Parse CORS origins (supports comma-separated values for multiple origins)
+const corsOrigins = process.env.FRONTEND_URL 
+  ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
+  : ['http://localhost:5173'];
+
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is in allowed list
+    if (corsOrigins.includes(origin) || corsOrigins.includes('*')) {
+      return callback(null, true);
+    }
+    
+    // For development, be more permissive
+    if (process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+    
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true
 }));
 
@@ -72,7 +81,7 @@ app.use((req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, HOST, () => {
   console.log(`
   ╔═══════════════════════════════════════╗
   ║                                       ║
@@ -81,8 +90,9 @@ app.listen(PORT, () => {
   ║                                       ║
   ╚═══════════════════════════════════════╝
   
-  Server running on port ${PORT}
+  Server running on ${HOST}:${PORT}
   Environment: ${process.env.NODE_ENV || 'development'}
+  CORS Origins: ${corsOrigins.join(', ')}
   
   API Endpoints:
   - POST   /api/auth/register
@@ -104,6 +114,9 @@ app.listen(PORT, () => {
   - POST   /api/payment/webhook/tebex
   - GET    /api/payment/balance
   - GET    /api/payment/transactions
+  
+  Admin CLI:
+  Run 'node src/admin-cli.js --help' for token management commands
   `);
 });
 

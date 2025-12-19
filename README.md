@@ -233,6 +233,126 @@ npm run build
 npm start
 ```
 
+## 🌐 VPS Deployment
+
+### Server Configuration
+
+The backend server binds to `0.0.0.0` by default, allowing connections from any IP address. Configure these environment variables for your VPS:
+
+**Backend (`backend/.env`):**
+```env
+PORT=3001
+HOST=0.0.0.0
+JWT_SECRET=your-secure-secret-change-this
+MEGALLM_API_KEY=your-megallm-api-key
+MEGALLM_API_URL=https://api.megallm.com/v1
+NODE_ENV=production
+FRONTEND_URL=https://your-domain.com,http://your-vps-ip:5173
+TEBEX_WEBHOOK_SECRET=your-tebex-webhook-secret
+```
+
+**Frontend (`frontend/.env`):**
+```env
+VITE_API_URL=https://your-domain.com/api
+```
+
+### CORS Configuration
+
+The backend supports multiple CORS origins (comma-separated):
+```env
+FRONTEND_URL=https://your-domain.com,https://www.your-domain.com
+```
+
+### Running with PM2
+
+```bash
+# Install PM2
+npm install -g pm2
+
+# Start backend
+cd backend
+pm2 start src/server.js --name kodella-backend
+
+# View logs
+pm2 logs kodella-backend
+```
+
+### Nginx Reverse Proxy (Recommended)
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+    
+    location /api {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+    
+    location / {
+        proxy_pass http://localhost:5173;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+## 🔧 Admin CLI Tool
+
+The admin CLI allows administrators to manage users and tokens via SSH console/terminal.
+
+### Usage
+
+```bash
+cd backend
+npm run admin -- <command> [options]
+# or
+node src/admin-cli.js <command> [options]
+```
+
+### Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `add-tokens` | Add tokens to a user's balance |
+| `set-tokens` | Set a user's token balance to a specific value |
+| `list-users` | List all registered users |
+| `user-info` | Get detailed information about a user |
+| `help` | Show help message |
+
+### Examples
+
+```bash
+# List all users
+node src/admin-cli.js list-users
+
+# Add 1000 tokens to a user
+node src/admin-cli.js add-tokens --user john@example.com --amount 1000
+
+# Add tokens with a reason
+node src/admin-cli.js add-tokens --user john --amount 500 --reason "Promotional bonus"
+
+# Set user's token balance
+node src/admin-cli.js set-tokens --user 1 --amount 5000
+
+# Get user information
+node src/admin-cli.js user-info --user john@example.com
+```
+
+### User Identification
+
+You can identify users by:
+- **Email**: `--user john@example.com`
+- **Username**: `--user john`
+- **User ID**: `--user 1`
+
 ## 🔧 Configuration
 
 ### Tebex Webhook Setup
